@@ -1,111 +1,150 @@
-#include <stdio.h>
 #include <iostream>
+#include <algorithm>
+#include <iomanip>
+#include <string.h>
 using namespace std;
+struct process
+{
+    int pid;
+    int arrival_time;
+    int burst_time;
+    int start_time;
+    int completion_time;
+    int turnaround_time;
+    int waiting_time;
+    int response_time;
+};
 int main()
 {
-    int i, n, proc_id[10], min, k = 1, btime = 0;
-    int bt[10], temp, j, at[10], wt[10], tt[10], a[10];
-    int t = 0, m = 0;
+
+    int x;
+    struct process p[100];
+    float avg_turnaround_time;
+    float avg_waiting_time;
+    float avg_response_time;
+    float cpu_utilization;
+    int total_turnaround_time = 0;
+    int total_waiting_time = 0;
+    int total_response_time = 0;
+    int total_idle_time = 0;
+    float throughput;
+    int burst_remaining[100];
+    int is_completed[100];
+    memset(is_completed, 0, sizeof(is_completed));
+
+    cout << setprecision(2) << fixed;
+
     cout << "Enter the number of processes: ";
-    cin >> n;
-    cout << "\n Enter the arrival time: \n";
-    for (i = 0; i < n; i++)
+    cin >> x;
+
+    for (int i = 0; i < x; i++)
     {
-        cout << "P[" << i + 1 << "]:";
-        cin >> at[i];
+        cout << "Enter arrival time ofthe process " << i + 1 << ": ";
+        cin >> p[i].arrival_time;
+        cout << "Enter burst time of the process " << i + 1 << ": ";
+        cin >> p[i].burst_time;
+        p[i].pid = i + 1;
+        burst_remaining[i] = p[i].burst_time;
         cout << endl;
     }
-    cout << "Enter the burst time:" << endl;
-    for (i = 0; i < n; i++)
+
+    int current_time = 0;
+    int completed = 0;
+    int prev = 0;
+
+    while (completed != x)
     {
-        cout << "P[" << i + 1 << "]:";
-        cin >> bt[i];
-        cout << endl;
-        proc_id[i] = i + 1;
-    }
-    for (i = 0; i < n; i++)
-    {
-        for (j = 0; j < n; j++)
+        int idx = -1;
+        int mn = 10000000;
+        for (int i = 0; i < x; i++)
         {
-            if (at[i] < at[j])
+            if (p[i].arrival_time <= current_time && is_completed[i] == 0)
             {
-                temp = proc_id[j];
-                proc_id[j] = proc_id[i];
-                proc_id[i] = temp;
-                temp = at[j];
-                at[j] = at[i];
-                at[i] = temp;
-                temp = bt[j];
-                bt[j] = bt[i];
-                bt[i] = temp;
-            }
-        }
-    }
-    t = 0;
-    temp = 0;
-    for (i = 0; i < n; i++)
-    {
-        for (j = 0; j < (n - 1) - i; j++)
-        {
-            if (at[j] == at[j + 1])
-            {
-                if (bt[j] > bt[j + 1])
+                if (burst_remaining[i] < mn)
                 {
-                    temp = at[j];
-                    at[j] = at[j + 1];
-                    at[j + 1] = temp;
-                    t = bt[j];
-                    bt[j] = bt[j + 1];
-                    bt[j + 1] = t;
-                    m = proc_id[j];
-                    proc_id[j] = proc_id[j + 1];
-                    proc_id[j + 1] = m;
+                    mn = burst_remaining[i];
+                    idx = i;
+                }
+                if (burst_remaining[i] == mn)
+                {
+                    if (p[i].arrival_time < p[idx].arrival_time)
+                    {
+                        mn = burst_remaining[i];
+                        idx = i;
+                    }
                 }
             }
         }
-    }
-    for (j = 0; j < n; j++)
-    {
-        btime = btime + bt[j];
-        min = bt[k];
-        for (i = k; i < n; i++)
+
+        if (idx != -1)
         {
-            if (btime >= at[i] && bt[i] < min)
+            if (burst_remaining[idx] == p[idx].burst_time)
             {
-                temp = proc_id[k];
-                proc_id[k] = proc_id[i];
-                proc_id[i] = temp;
-                temp = at[k];
-                at[k] = at[i];
-                at[i] = temp;
-                temp = bt[k];
-                bt[k] = bt[i];
-                bt[i] = temp;
+                p[idx].start_time = current_time;
+                total_idle_time += p[idx].start_time - prev;
+            }
+            burst_remaining[idx] -= 1;
+            current_time++;
+            prev = current_time;
+
+            if (burst_remaining[idx] == 0)
+            {
+                p[idx].completion_time = current_time;
+                p[idx].turnaround_time = p[idx].completion_time - p[idx].arrival_time;
+                p[idx].waiting_time = p[idx].turnaround_time - p[idx].burst_time;
+                p[idx].response_time = p[idx].start_time - p[idx].arrival_time;
+
+                total_turnaround_time += p[idx].turnaround_time;
+                total_waiting_time += p[idx].waiting_time;
+                total_response_time += p[idx].response_time;
+
+                is_completed[idx] = 1;
+                completed++;
             }
         }
-        k++;
+        else
+        {
+            current_time++;
+        }
     }
-    wt[0] = 0;
-    a[0] = 0;
-    for (i = 1; i < n; i++)
+
+    int min_arrival_time = 10000000;
+    int max_completion_time = -1;
+    for (int i = 0; i < x; i++)
     {
-        a[i] = a[i - 1] + bt[i - 1];
-        wt[i] = a[i] - at[i];
+        min_arrival_time = min(min_arrival_time, p[i].arrival_time);
+        max_completion_time = max(max_completion_time, p[i].completion_time);
     }
-    for (i = 0; i < n; i++)
-    {
-        tt[i] = wt[i] + bt[i];
-    }
-    cout << endl;
+
+    avg_turnaround_time = (float)total_turnaround_time / x;
+    avg_waiting_time = (float)total_waiting_time / x;
+    avg_response_time = (float)total_response_time / x;
+    cpu_utilization = ((max_completion_time - total_idle_time) / (float)max_completion_time) * 100;
+    throughput = float(x) / (max_completion_time - min_arrival_time);
+
+    cout << endl
+         << endl;
+
     cout << "Process\t"
-         << "Burst\t"
-         << "Arrival\t"
-         << "Waiting\t"
-         << "Turn-around";
-    for (i = 0; i < n; i++)
+         << "Arrival Time\t"
+         << "Burst Time\t"
+         << "ST\t"
+         << "CT\t"
+         << "TAT\t"
+         << "WT\t"
+         << "RT\t"
+         << "\n"
+         << endl;
+
+    for (int i = 0; i < x; i++)
     {
-        cout << "\n"
-             << "P[" << proc_id[i] << "]"
-             << " \t " << bt[i] << " \t " << at[i] << " \t" << wt[i] << "\t" << tt[i];
+        cout << p[i].pid << "\t" << p[i].arrival_time << "\t" << p[i].burst_time << "\t" << p[i].start_time << "\t" << p[i].completion_time << "\t" << p[i].turnaround_time << "\t" << p[i].waiting_time << "\t" << p[i].response_time << "\t"
+             << "\n"
+             << endl;
     }
+    cout << "Average Turnaround Time = " << avg_turnaround_time << endl;
+    cout << "Average Waiting Time = " << avg_waiting_time << endl;
+    cout << "Average Response Time = " << avg_response_time << endl;
+    cout << "CPU Utilization = " << cpu_utilization << "%" << endl;
+    cout << "Throughput = " << throughput << " process/unit time" << endl;
 }
